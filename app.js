@@ -7,6 +7,7 @@ if (!window.dbClient) {
   window.dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 var supabase = window.dbClient;
+
 // ESTADO DE LA APLICACIÓN
 let photosState = [];
 let currentPhotoIndex = 0;
@@ -30,13 +31,14 @@ const nextPhotoBtn = document.getElementById("next-photo-btn");
 // INICIALIZACIÓN
 document.addEventListener("DOMContentLoaded", async () => {
   setupEventListeners();
+  registerServiceWorker();
 
   const urlParams = new URLSearchParams(window.location.search);
   eventId = urlParams.get("evento");
 
   // Si no hay parámetro en la URL, busca automáticamente el evento activo más reciente
   if (!eventId) {
-    const { data: latestEvent, error } = await supabase
+    const { data: latestEvent } = await supabase
       .from("eventos")
       .select("id")
       .eq("estado", "activo")
@@ -47,13 +49,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (latestEvent) {
       eventId = latestEvent.id;
     } else {
-      const titleEl = document.getElementById("event-title") || document.querySelector("h1");
-      if (titleEl) titleEl.textContent = "No hay ningún evento activo disponible.";
+      if (eventTitle) eventTitle.textContent = "No hay ningún evento activo disponible.";
       return;
     }
   }
 
-  await fetchEventData();
+  await fetchEventDetails();
   await fetchPhotos();
   setupRealtimeSubscription();
 });
@@ -67,10 +68,10 @@ async function fetchEventDetails() {
     .single();
 
   if (error || !data) {
-    eventTitle.textContent = "Evento no encontrado";
+    if (eventTitle) eventTitle.textContent = "Evento no encontrado";
     return;
   }
-  eventTitle.textContent = data.nombre;
+  if (eventTitle) eventTitle.textContent = data.nombre;
 }
 
 // Cargar lista de fotografías
@@ -86,13 +87,14 @@ async function fetchPhotos() {
     return;
   }
 
-  photosState = data;
+  photosState = data || [];
   renderGallery();
   updateCounter();
 }
 
 // Renderizar la Cuadrícula
 function renderGallery() {
+  if (!galleryGrid) return;
   galleryGrid.innerHTML = "";
 
   photosState.forEach((photo, index) => {
@@ -115,6 +117,7 @@ function renderGallery() {
 
 // Actualizar Contador de Seleccionadas
 function updateCounter() {
+  if (!selectionCounter) return;
   const selectedCount = photosState.filter(p => p.seleccionada).length;
   selectionCounter.textContent = `${selectedCount} de ${photosState.length} seleccionadas`;
 }
@@ -123,32 +126,35 @@ function updateCounter() {
 function openModal(index) {
   currentPhotoIndex = index;
   updateModalContent();
-  photoModal.classList.remove("hidden");
+  if (photoModal) photoModal.classList.remove("hidden");
 }
 
 function closeModal() {
-  photoModal.classList.add("hidden");
+  if (photoModal) photoModal.classList.add("hidden");
 }
 
 function updateModalContent() {
   const photo = photosState[currentPhotoIndex];
+  if (!photo) return;
   const formattedNum = String(photo.numero).padStart(3, "0");
 
-  modalImage.src = photo.original_url;
-  modalPhotoNumber.textContent = `Foto ${formattedNum}`;
+  if (modalImage) modalImage.src = photo.original_url || photo.thumbnail_url;
+  if (modalPhotoNumber) modalPhotoNumber.textContent = `Foto ${formattedNum}`;
 
   if (photo.seleccionada) {
-    toggleSelectBtn.classList.add("is-selected");
-    selectBtnText.textContent = "✓ Seleccionada";
+    if (toggleSelectBtn) toggleSelectBtn.classList.add("is-selected");
+    if (selectBtnText) selectBtnText.textContent = "✓ Seleccionada";
   } else {
-    toggleSelectBtn.classList.remove("is-selected");
-    selectBtnText.textContent = "Seleccionar fotografía";
+    if (toggleSelectBtn) toggleSelectBtn.classList.remove("is-selected");
+    if (selectBtnText) selectBtnText.textContent = "Seleccionar fotografía";
   }
 }
 
 // Alternar Selección (Guardado Automático)
 async function togglePhotoSelection() {
   const photo = photosState[currentPhotoIndex];
+  if (!photo) return;
+
   const newSelectionState = !photo.seleccionada;
 
   // Actualización optimista en memoria y UI
@@ -190,19 +196,47 @@ function prevPhoto() {
 
 // Event Listeners
 function setupEventListeners() {
-  closeModalBtn.addEventListener("click", closeModal);
-  toggleSelectBtn.addEventListener("click", togglePhotoSelection);
-  nextPhotoBtn.addEventListener("click", nextPhoto);
-  prevPhotoBtn.addEventListener("click", prevPhoto);
+  if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
+  if (toggleSelectBtn) toggleSelectBtn.addEventListener("click", togglePhotoSelection);
+  if (nextPhotoBtn) nextPhotoBtn.addEventListener("click", nextPhoto);
+  if (prevPhotoBtn) prevPhotoBtn.addEventListener("click", prevPhoto);
 
   // Soporte de Teclado
   document.addEventListener("keydown", (e) => {
-    if (photoModal.classList.contains("hidden")) return;
+    if (!photoModal || photoModal.classList.contains("hidden")) return;
     if (e.key === "Escape") closeModal();
     if (e.key === "ArrowRight") nextPhoto();
     if (e.key === "ArrowLeft") prevPhoto();
     if (e.key === " ") togglePhotoSelection();
   });
+}
+
+// SINCRONIZACIÓN EN TIEMPO REAL
+function setupRealtimeSubscription() {
+  if (!eventId) return;
+  supabase
+    .channel(`public-event-${eventId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "UPDATE",
+        schema: "public",
+        table: "fotografias",
+        filter: `evento_id=eq.${eventId}`
+      },
+      (payload) => {
+        const index = photosState.findIndex(p => p.id === payload.new.id);
+        if (index !== -1) {
+          photosState[index] = payload.new;
+          renderGallery();
+          updateCounter();
+          if (photoModal && !photoModal.classList.contains("hidden") && currentPhotoIndex === index) {
+            updateModalContent();
+          }
+        }
+      }
+    )
+    .subscribe();
 }
 
 // REGISTRO DEL SERVICE WORKER
