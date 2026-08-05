@@ -10,14 +10,15 @@
 </head>
 <body class="admin-body">
 
-  <!-- Bar Superior del Administrador -->
+  <!-- Barra Superior del Administrador -->
   <header class="admin-header">
     <div class="header-left">
       <a href="index.html" class="back-link">‹ Vista Revisor</a>
-      <h1 id="admin-event-title">Cargando evento...</h1>
-      <span id="realtime-badge" class="status-badge connecting">Connecting Realtime...</span>
+      <h1 id="admin-event-title">Selecciona o crea un evento</h1>
+      <span id="realtime-badge" class="status-badge connecting">Sin conexión</span>
     </div>
     <div class="header-actions">
+      <button id="open-create-modal-btn" class="btn btn-primary">+ Nuevo Evento</button>
       <button id="download-selected-btn" class="btn btn-primary">
         📥 Descargar Seleccionadas (<span id="btn-selected-count">0</span>)
       </button>
@@ -55,29 +56,37 @@
   <main class="gallery-container">
     <div id="admin-gallery-grid" class="gallery-grid"></div>
   </main>
-<!-- Modal para Crear Nuevo Evento desde la Web -->
-<div id="create-event-modal" class="modal hidden">
-  <div class="modal-dialog">
-    <h2>Crear Nuevo Evento</h2>
-    
-    <label for="new-event-name">Nombre del Evento:</label>
-    <input type="text" id="new-event-name" placeholder="Ej: Inauguración de Carretera" class="form-input">
 
-    <label for="event-photos-input">Seleccionar Fotografías:</label>
-    <input type="file" id="event-photos-input" multiple accept="image/*" class="form-input">
+  <!-- Modal para Crear Nuevo Evento -->
+  <div id="create-event-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h2>Crear Nuevo Evento</h2>
+      
+      <div class="form-group">
+        <label for="new-event-name">Nombre del Evento:</label>
+        <input type="text" id="new-event-name" placeholder="Ej: Inauguración de Carretera" class="form-control">
+      </div>
 
-    <!-- Barra de Progreso -->
-    <div id="upload-progress-container" class="hidden">
-      <p id="upload-status-text">Procesando fotos...</p>
-      <progress id="upload-progress-bar" value="0" max="100"></progress>
-    </div>
+      <div class="form-group">
+        <label for="event-photos-input">Seleccionar Fotografías (JPG/PNG):</label>
+        <input type="file" id="event-photos-input" multiple accept="image/*" class="form-control">
+      </div>
 
-    <div class="modal-actions">
-      <button id="start-upload-btn" class="btn btn-primary">Crear y Subir Fotos</button>
-      <button id="close-create-modal-btn" class="btn btn-ghost">Cancelar</button>
+      <!-- Indicador de Progreso -->
+      <div id="upload-progress-container" class="progress-container hidden">
+        <p id="upload-status-text">Procesando fotos...</p>
+        <div class="progress-bar-bg">
+          <div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="start-upload-btn" class="btn btn-success">Crear y Subir Fotos</button>
+        <button id="close-create-modal-btn" class="btn btn-secondary">Cancelar</button>
+      </div>
     </div>
   </div>
-</div>
+
   <!-- Modal Confirmación para Finalizar Evento -->
   <div id="finalize-modal" class="modal hidden">
     <div class="modal-dialog">

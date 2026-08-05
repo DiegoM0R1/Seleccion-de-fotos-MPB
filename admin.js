@@ -1,5 +1,5 @@
 // CONFIGURACIÓN DE SUPABASE
-const SUPABASE_URL = "https://supabase.com/dashboard/project/svdfdahvhdmxzyknmicz";
+const SUPABASE_URL = "https://svdfdahvhdmxzyknmicz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2ZGZkYWh2aGRteHp5a25taWN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5Mjk1NDQsImV4cCI6MjEwMTUwNTU0NH0.c7OLeFnZQYSYmJtWsmdYry22sEPtPUw2DsEiJPLx_Vk";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -26,7 +26,7 @@ const filterCountSelected = document.getElementById("filter-count-selected");
 const filterCountUnselected = document.getElementById("filter-count-unselected");
 const filterCountPublished = document.getElementById("filter-count-published");
 
-// Acciones y Modal
+// Acciones y Modales
 const downloadSelectedBtn = document.getElementById("download-selected-btn");
 const finalizeEventBtn = document.getElementById("finalize-event-btn");
 const finalizeModal = document.getElementById("finalize-modal");
@@ -34,20 +34,26 @@ const cancelFinalizeBtn = document.getElementById("cancel-finalize-btn");
 const confirmArchiveBtn = document.getElementById("confirm-archive-btn");
 const confirmDeleteBtn = document.getElementById("confirm-delete-btn");
 
+const createModal = document.getElementById("create-event-modal");
+const openModalBtn = document.getElementById("open-create-modal-btn");
+const closeModalBtn = document.getElementById("close-create-modal-btn");
+const startUploadBtn = document.getElementById("start-upload-btn");
+
 // INICIALIZACIÓN
 document.addEventListener("DOMContentLoaded", async () => {
+  setupEventListeners();
+
   const urlParams = new URLSearchParams(window.location.search);
   eventId = urlParams.get("evento");
 
   if (!eventId) {
-    adminEventTitle.textContent = "Error: Falta ID del evento";
+    adminEventTitle.textContent = "Crea un nuevo evento con el botón superior";
     return;
   }
 
   await fetchEventData();
   await fetchPhotos();
   setupRealtimeSubscription();
-  setupEventListeners();
 });
 
 // 1. Cargar datos del evento y fotos
@@ -68,100 +74,103 @@ async function fetchPhotos() {
     updateUI();
   }
 }
-// Función para redimensionar fotos en el navegador usando Canvas (reemplaza a Pillow de Python)
-function createBrowserThumbnail(file, maxWidth = 600) {
+
+// 2. Generador de miniaturas en memoria usando Canvas
+function generateThumbnail(file, maxWidth = 600) {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = (event) => {
+    reader.onload = (e) => {
       const img = new Image();
-      img.src = event.target.result;
+      img.src = e.target.result;
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        const scaleFactor = maxWidth / img.width;
+        const scale = maxWidth / img.width;
         
-        if (scaleFactor < 1) {
-          canvas.width = maxWidth;
-          canvas.height = img.height * scaleFactor;
-        } else {
-          canvas.width = img.width;
-          canvas.height = img.height;
-        }
+        canvas.width = scale < 1 ? maxWidth : img.width;
+        canvas.height = scale < 1 ? img.height * scale : img.height;
 
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        canvas.toBlob((blob) => {
-          resolve(blob);
-        }, "image/jpeg", 0.8); // Calidad 80%
+        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.8);
       };
     };
   });
 }
 
-// Proceso completo de creación del evento directamente en la Web
-async function handleWebUpload(eventName, files) {
-  const progressBar = document.getElementById("upload-progress-bar");
-  const progressText = document.getElementById("upload-status-text");
+// 3. Proceso de creación de evento y subida
+startUploadBtn?.addEventListener("click", async () => {
+  const nameInput = document.getElementById("new-event-name");
+  const filesInput = document.getElementById("event-photos-input");
   const progressContainer = document.getElementById("upload-progress-container");
+  const progressBar = document.getElementById("upload-progress-bar");
+  const statusText = document.getElementById("upload-status-text");
 
+  const eventName = nameInput.value.trim();
+  const files = Array.from(filesInput.files).sort((a, b) => a.name.localeCompare(b.name));
+
+  if (!eventName) return alert("Ingresa un nombre para el evento");
+  if (files.length === 0) return alert("Selecciona al menos una fotografía");
+
+  startUploadBtn.disabled = true;
   progressContainer.classList.remove("hidden");
 
-  // 1. Crear el Evento en Supabase
-  const { data: eventData, error: eventError } = await supabase
-    .from("eventos")
-    .insert([{ nombre: eventName, estado: "activo" }])
-    .select()
-    .single();
+  try {
+    const { data: eventData, error: eventError } = await supabase
+      .from("eventos")
+      .insert([{ nombre: eventName, estado: "activo" }])
+      .select()
+      .single();
 
-  if (eventError) {
-    alert("Error al crear el evento");
-    return;
+    if (eventError) throw eventError;
+
+    const newEventId = eventData.id;
+    const total = files.length;
+
+    for (let i = 0; i < total; i++) {
+      const file = files[i];
+      const photoNum = i + 1;
+      
+      statusText.textContent = `Procesando Foto ${photoNum} de ${total}...`;
+
+      const thumbBlob = await generateThumbnail(file);
+
+      const origPath = `eventos/${newEventId}/orig_${file.name}`;
+      const thumbPath = `eventos/${newEventId}/thumb_${file.name}`;
+
+      await supabase.storage.from("fotografias").upload(origPath, file);
+      await supabase.storage.from("fotografias").upload(thumbPath, thumbBlob);
+
+      const { data: origUrl } = supabase.storage.from("fotografias").getPublicUrl(origPath);
+      const { data: thumbUrl } = supabase.storage.from("fotografias").getPublicUrl(thumbPath);
+
+      await supabase.from("fotografias").insert([{
+        evento_id: newEventId,
+        nombre_original: file.name,
+        numero: photoNum,
+        thumbnail_url: thumbUrl.publicUrl,
+        original_url: origUrl.publicUrl,
+        seleccionada: false,
+        publicada: false
+      }]);
+
+      const percent = Math.round(((i + 1) / total) * 100);
+      progressBar.style.width = `${percent}%`;
+    }
+
+    alert("¡Evento y fotografías creados con éxito!");
+    window.location.href = `admin.html?evento=${newEventId}`;
+
+  } catch (err) {
+    console.error(err);
+    alert("Error al procesar la carga: " + err.message);
+  } finally {
+    startUploadBtn.disabled = false;
   }
+});
 
-  const newEventId = eventData.id;
-  const fileArray = Array.from(files).sort((a, b) => a.name.localeCompare(b.name));
-  const totalFiles = fileArray.length;
-
-  // 2. Subir fotos a Supabase Storage (o Google Drive vía API)
-  for (let i = 0; i < totalFiles; i++) {
-    const file = fileArray[i];
-    const photoNumber = i + 1;
-    progressText.textContent = `Procesando Foto ${photoNumber} de ${totalFiles}...`;
-
-    // Generar la miniatura ligera en el navegador
-    const thumbBlob = await createBrowserThumbnail(file);
-
-    // Subir archivo original y miniatura a Supabase Storage Bucket
-    const originalPath = `eventos/${newEventId}/original_${file.name}`;
-    const thumbPath = `eventos/${newEventId}/thumb_${file.name}`;
-
-    await supabase.storage.from("fotografias").upload(originalPath, file);
-    await supabase.storage.from("fotografias").upload(thumbPath, thumbBlob);
-
-    // Obtener URLs públicas
-    const { data: originalUrl } = supabase.storage.from("fotografias").getPublicUrl(originalPath);
-    const { data: thumbUrl } = supabase.storage.from("fotografias").getPublicUrl(thumbPath);
-
-    // Guardar registro en la base de datos
-    await supabase.from("fotografias").insert([{
-      evento_id: newEventId,
-      nombre_original: file.name,
-      numero: photoNumber,
-      drive_file_id: originalPath, // Referencia del path
-      thumbnail_url: thumbUrl.publicUrl,
-      original_url: originalUrl.publicUrl,
-      seleccionada: false,
-      publicada: false
-    }]);
-
-    progressBar.value = Math.round(((i + 1) / totalFiles) * 100);
-  }
-
-  alert("¡Evento creado con éxito!");
-  window.location.href = `admin.html?evento=${newEventId}`;
-}
-// 2. CONFIGURACIÓN DE SINCRONIZACIÓN EN TIEMPO REAL (REALTIME)
+// 4. Configuración de Realtime
 function setupRealtimeSubscription() {
   supabase
     .channel(`admin-event-${eventId}`)
@@ -174,7 +183,6 @@ function setupRealtimeSubscription() {
         filter: `evento_id=eq.${eventId}`
       },
       (payload) => {
-        // Actualizar la foto modificada por el revisor en el estado local
         const index = photosState.findIndex(p => p.id === payload.new.id);
         if (index !== -1) {
           photosState[index] = payload.new;
@@ -191,7 +199,6 @@ function setupRealtimeSubscription() {
     });
 }
 
-// Visual feedback de animación cuando cambia una foto
 function flashCard(photoId) {
   const card = document.querySelector(`[data-photo-id="${photoId}"]`);
   if (card) {
@@ -201,7 +208,7 @@ function flashCard(photoId) {
   }
 }
 
-// 3. Renderizado y Métricas
+// 5. Renderizado y Métricas
 function updateUI() {
   updateMetricsAndCounts();
   renderAdminGallery();
@@ -227,12 +234,11 @@ function updateMetricsAndCounts() {
 function renderAdminGallery() {
   adminGalleryGrid.innerHTML = "";
 
-  // Filtrado
   const filteredPhotos = photosState.filter(photo => {
     if (currentFilter === "selected") return photo.seleccionada;
     if (currentFilter === "unselected") return !photo.seleccionada;
     if (currentFilter === "published") return photo.publicada;
-    return true; // "all"
+    return true;
   });
 
   filteredPhotos.forEach(photo => {
@@ -256,7 +262,7 @@ function renderAdminGallery() {
   });
 }
 
-// 4. Marcar Estado: Publicada
+// 6. Marcar Estado: Publicada
 async function togglePublished(photoId) {
   const photo = photosState.find(p => p.id === photoId);
   if (!photo) return;
@@ -268,8 +274,8 @@ async function togglePublished(photoId) {
   await supabase.from("fotografias").update({ publicada: newStatus }).eq("id", photoId);
 }
 
-// 5. Descarga de Fotografías Seleccionadas
-downloadSelectedBtn.addEventListener("click", () => {
+// 7. Descarga y Modales
+downloadSelectedBtn?.addEventListener("click", () => {
   const selectedPhotos = photosState.filter(p => p.seleccionada);
   
   if (selectedPhotos.length === 0) {
@@ -277,7 +283,6 @@ downloadSelectedBtn.addEventListener("click", () => {
     return;
   }
 
-  // Generar un archivo de texto/lista para el fotógrafo con las URLs directas
   const downloadList = selectedPhotos
     .map(p => `Foto ${String(p.numero).padStart(3, "0")}: ${p.original_url}`)
     .join("\n");
@@ -289,23 +294,21 @@ downloadSelectedBtn.addEventListener("click", () => {
   a.download = `seleccion_evento_${eventId.substring(0, 8)}.txt`;
   a.click();
 
-  // Abrir también pestañas individuales si son menos de 10 fotos
   if (selectedPhotos.length <= 10) {
     selectedPhotos.forEach(p => window.open(p.original_url, "_blank"));
   }
 });
 
-// 6. Finalizar Evento
-finalizeEventBtn.addEventListener("click", () => finalizeModal.classList.remove("hidden"));
-cancelFinalizeBtn.addEventListener("click", () => finalizeModal.classList.add("hidden"));
+finalizeEventBtn?.addEventListener("click", () => finalizeModal.classList.remove("hidden"));
+cancelFinalizeBtn?.addEventListener("click", () => finalizeModal.classList.add("hidden"));
 
-confirmArchiveBtn.addEventListener("click", async () => {
+confirmArchiveBtn?.addEventListener("click", async () => {
   await supabase.from("eventos").update({ estado: "archivado" }).eq("id", eventId);
   alert("Evento archivado correctamente.");
   window.location.reload();
 });
 
-confirmDeleteBtn.addEventListener("click", async () => {
+confirmDeleteBtn?.addEventListener("click", async () => {
   if (confirm("⚠️ ¿Estás seguro de eliminar permanentemente el evento y todos sus registros?")) {
     await supabase.from("eventos").delete().eq("id", eventId);
     alert("Evento eliminado.");
@@ -313,8 +316,10 @@ confirmDeleteBtn.addEventListener("click", async () => {
   }
 });
 
-// Event Listeners para Filtros
 function setupEventListeners() {
+  openModalBtn?.addEventListener("click", () => createModal.classList.remove("hidden"));
+  closeModalBtn?.addEventListener("click", () => createModal.classList.add("hidden"));
+
   filterTabs.forEach(tab => {
     tab.addEventListener("click", () => {
       filterTabs.forEach(t => t.classList.remove("active"));
