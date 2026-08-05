@@ -2,11 +2,11 @@
 const SUPABASE_URL = "https://svdfdahvhdmxzyknmicz.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN2ZGZkYWh2aGRteHp5a25taWN6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5Mjk1NDQsImV4cCI6MjEwMTUwNTU0NH0.c7OLeFnZQYSYmJtWsmdYry22sEPtPUw2DsEiJPLx_Vk";
 
-// Inicialización segura sin colisión de nombres
 if (!window.dbClient) {
   window.dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 var supabase = window.dbClient;
+
 // ESTADO GLOBAL
 let photosState = [];
 let eventId = null;
@@ -30,7 +30,7 @@ const filterCountSelected = document.getElementById("filter-count-selected");
 const filterCountUnselected = document.getElementById("filter-count-unselected");
 const filterCountPublished = document.getElementById("filter-count-published");
 
-// Acciones y Modales
+// Modales y Acciones
 const downloadSelectedBtn = document.getElementById("download-selected-btn");
 const finalizeEventBtn = document.getElementById("finalize-event-btn");
 const finalizeModal = document.getElementById("finalize-modal");
@@ -79,9 +79,9 @@ async function fetchPhotos() {
   }
 }
 
-// 2. Generador de miniaturas en memoria usando Canvas
+// 2. Compresión de miniaturas
 function generateThumbnail(file, maxWidth = 600) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = (e) => {
@@ -97,13 +97,18 @@ function generateThumbnail(file, maxWidth = 600) {
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         
-        canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.8);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Error al generar la miniatura"));
+        }, "image/jpeg", 0.8);
       };
+      img.onerror = () => reject(new Error("Error al cargar la imagen seleccionada"));
     };
+    reader.onerror = () => reject(new Error("Error al leer el archivo local"));
   });
 }
 
-// 3. Proceso de creación de evento y subida
+// 3. Subida e inserción con validación de errores
 startUploadBtn?.addEventListener("click", async () => {
   const nameInput = document.getElementById("new-event-name");
   const filesInput = document.getElementById("event-photos-input");
@@ -121,17 +126,19 @@ startUploadBtn?.addEventListener("click", async () => {
   progressContainer.classList.remove("hidden");
 
   try {
+    // A. Crear el registro del evento
     const { data: eventData, error: eventError } = await supabase
       .from("eventos")
       .insert([{ nombre: eventName, estado: "activo" }])
       .select()
       .single();
 
-    if (eventError) throw eventError;
+    if (eventError) throw new Error("Error en BD (Eventos): " + eventError.message);
 
     const newEventId = eventData.id;
     const total = files.length;
 
+    // B. Subir fotos una por una
     for (let i = 0; i < total; i++) {
       const file = files[i];
       const photoNum = i + 1;
@@ -140,16 +147,26 @@ startUploadBtn?.addEventListener("click", async () => {
 
       const thumbBlob = await generateThumbnail(file);
 
-      const origPath = `eventos/${newEventId}/orig_${file.name}`;
-      const thumbPath = `eventos/${newEventId}/thumb_${file.name}`;
+      // Limpiar nombres de archivo para evitar errores por caracteres especiales
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const timeStamp = Date.now();
+      const origPath = `eventos/${newEventId}/orig_${timeStamp}_${cleanName}`;
+      const thumbPath = `eventos/${newEventId}/thumb_${timeStamp}_${cleanName}`;
 
-      await supabase.storage.from("fotografias").upload(origPath, file);
-      await supabase.storage.from("fotografias").upload(thumbPath, thumbBlob);
+      // Subir original a Storage
+      const { error: origErr } = await supabase.storage.from("fotografias").upload(origPath, file);
+      if (origErr) throw new Error(`Error al subir Foto Original ${photoNum}: ${origErr.message}`);
 
+      // Subir miniatura a Storage
+      const { error: thumbErr } = await supabase.storage.from("fotografias").upload(thumbPath, thumbBlob);
+      if (thumbErr) throw new Error(`Error al subir Miniatura ${photoNum}: ${thumbErr.message}`);
+
+      // Obtener URLs
       const { data: origUrl } = supabase.storage.from("fotografias").getPublicUrl(origPath);
       const { data: thumbUrl } = supabase.storage.from("fotografias").getPublicUrl(thumbPath);
 
-      await supabase.from("fotografias").insert([{
+      // Guardar registro en la tabla 'fotografias'
+      const { error: photoDbErr } = await supabase.from("fotografias").insert([{
         evento_id: newEventId,
         nombre_original: file.name,
         numero: photoNum,
@@ -158,6 +175,8 @@ startUploadBtn?.addEventListener("click", async () => {
         seleccionada: false,
         publicada: false
       }]);
+
+      if (photoDbErr) throw new Error(`Error al registrar Foto ${photoNum} en BD: ${photoDbErr.message}`);
 
       const percent = Math.round(((i + 1) / total) * 100);
       progressBar.style.width = `${percent}%`;
@@ -168,13 +187,13 @@ startUploadBtn?.addEventListener("click", async () => {
 
   } catch (err) {
     console.error(err);
-    alert("Error al procesar la carga: " + err.message);
+    alert("⚠️ " + err.message);
   } finally {
     startUploadBtn.disabled = false;
   }
 });
 
-// 4. Configuración de Realtime
+// 4. Suscripción en tiempo real
 function setupRealtimeSubscription() {
   supabase
     .channel(`admin-event-${eventId}`)
@@ -207,12 +226,12 @@ function flashCard(photoId) {
   const card = document.querySelector(`[data-photo-id="${photoId}"]`);
   if (card) {
     card.style.transition = "transform 0.2s, box-shadow 0.2s";
-    card.style.transform = "scale(1.05)";
+    card.style.transform = "scale(1.03)";
     setTimeout(() => { card.style.transform = "scale(1)"; }, 300);
   }
 }
 
-// 5. Renderizado y Métricas
+// 5. Renderizado e Interfaz
 function updateUI() {
   updateMetricsAndCounts();
   renderAdminGallery();
@@ -266,7 +285,7 @@ function renderAdminGallery() {
   });
 }
 
-// 6. Marcar Estado: Publicada
+// 6. Cambiar estado de publicación
 async function togglePublished(photoId) {
   const photo = photosState.find(p => p.id === photoId);
   if (!photo) return;
@@ -278,7 +297,7 @@ async function togglePublished(photoId) {
   await supabase.from("fotografias").update({ publicada: newStatus }).eq("id", photoId);
 }
 
-// 7. Descarga y Modales
+// 7. Eventos generales y descarga
 downloadSelectedBtn?.addEventListener("click", () => {
   const selectedPhotos = photosState.filter(p => p.seleccionada);
   
@@ -313,10 +332,10 @@ confirmArchiveBtn?.addEventListener("click", async () => {
 });
 
 confirmDeleteBtn?.addEventListener("click", async () => {
-  if (confirm("⚠️ ¿Estás seguro de eliminar permanentemente el evento y todos sus registros?")) {
+  if (confirm("⚠️ ¿Estás seguro de eliminar permanentemente el evento y todas sus fotos?")) {
     await supabase.from("eventos").delete().eq("id", eventId);
     alert("Evento eliminado.");
-    window.location.href = "index.html";
+    window.location.href = "admin.html";
   }
 });
 
