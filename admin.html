@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel del Fotógrafo - Photo Selection</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin-styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="admin-body">
+
+  <!-- Bar Superior del Administrador -->
+  <header class="admin-header">
+    <div class="header-left">
+      <a href="index.html" class="back-link">‹ Vista Revisor</a>
+      <h1 id="admin-event-title">Cargando evento...</h1>
+      <span id="realtime-badge" class="status-badge connecting">Connecting Realtime...</span>
+    </div>
+    <div class="header-actions">
+      <button id="download-selected-btn" class="btn btn-primary">
+        📥 Descargar Seleccionadas (<span id="btn-selected-count">0</span>)
+      </button>
+      <button id="finalize-event-btn" class="btn btn-danger">
+        🗑️ Finalizar Evento
+      </button>
+    </div>
+  </header>
+
+  <!-- Tarjetas de Métricas -->
+  <section class="metrics-container">
+    <div class="metric-card">
+      <span class="metric-value" id="metric-total">0</span>
+      <span class="metric-label">Fotos Totales</span>
+    </div>
+    <div class="metric-card highlight-card">
+      <span class="metric-value" id="metric-selected">0</span>
+      <span class="metric-label">Seleccionadas por el Alcalde</span>
+    </div>
+    <div class="metric-card">
+      <span class="metric-value" id="metric-published">0</span>
+      <span class="metric-label">Publicadas</span>
+    </div>
+  </section>
+
+  <!-- Barra de Filtros -->
+  <nav class="filter-bar">
+    <button class="filter-tab active" data-filter="all">Todas (<span id="filter-count-all">0</span>)</button>
+    <button class="filter-tab" data-filter="selected">✓ Seleccionadas (<span id="filter-count-selected">0</span>)</button>
+    <button class="filter-tab" data-filter="unselected">□ Pendientes (<span id="filter-count-unselected">0</span>)</button>
+    <button class="filter-tab" data-filter="published">📢 Publicadas (<span id="filter-count-published">0</span>)</button>
+  </nav>
+
+  <!-- Galería del Administrador -->
+  <main class="gallery-container">
+    <div id="admin-gallery-grid" class="gallery-grid"></div>
+  </main>
+<!-- Modal para Crear Nuevo Evento desde la Web -->
+<div id="create-event-modal" class="modal hidden">
+  <div class="modal-dialog">
+    <h2>Crear Nuevo Evento</h2>
+    
+    <label for="new-event-name">Nombre del Evento:</label>
+    <input type="text" id="new-event-name" placeholder="Ej: Inauguración de Carretera" class="form-input">
+
+    <label for="event-photos-input">Seleccionar Fotografías:</label>
+    <input type="file" id="event-photos-input" multiple accept="image/*" class="form-input">
+
+    <!-- Barra de Progreso -->
+    <div id="upload-progress-container" class="hidden">
+      <p id="upload-status-text">Procesando fotos...</p>
+      <progress id="upload-progress-bar" value="0" max="100"></progress>
+    </div>
+
+    <div class="modal-actions">
+      <button id="start-upload-btn" class="btn btn-primary">Crear y Subir Fotos</button>
+      <button id="close-create-modal-btn" class="btn btn-ghost">Cancelar</button>
+    </div>
+  </div>
+</div>
+  <!-- Modal Confirmación para Finalizar Evento -->
+  <div id="finalize-modal" class="modal hidden">
+    <div class="modal-dialog">
+      <h2>¿Finalizar Evento?</h2>
+      <p>Esta acción cambiará el estado del evento. Puedes optar por eliminar los registros o archivarlos.</p>
+      
+      <div class="modal-actions">
+        <button id="confirm-archive-btn" class="btn btn-secondary">Solo Archivar Evento</button>
+        <button id="confirm-delete-btn" class="btn btn-danger">Eliminar Todo (Base de datos y Fotos)</button>
+        <button id="cancel-finalize-btn" class="btn btn-ghost">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

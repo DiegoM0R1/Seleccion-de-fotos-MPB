@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Selección de Fotografías</title>
+  
+  <!-- PWA & Mobile Settings -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+
+  <!-- Estilos y Supabase SDK -->
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Cabecera Principal -->
+  <header class="app-header">
+    <div class="header-info">
+      <h1 id="event-title">Cargando evento...</h1>
+      <p id="selection-counter">0 seleccionadas</p>
+    </div>
+  </header>
+
+  <!-- Contenedor Principal: Cuadrícula de Fotos -->
+  <main class="gallery-container">
+    <div id="gallery-grid" class="gallery-grid"></div>
+  </main>
+
+  <!-- Modal / Visor a Pantalla Completa (Estilo Google Photos) -->
+  <div id="photo-modal" class="modal hidden">
+    <div class="modal-header">
+      <button id="close-modal-btn" class="icon-btn" aria-label="Cerrar">✕</button>
+      <span id="modal-photo-number" class="photo-title">Foto 000</span>
+      <div style="width: 40px;"></div> <!-- Spacer para equilibrar flex -->
+    </div>
+
+    <div class="modal-body">
+      <button id="prev-photo-btn" class="nav-btn prev-btn">❮</button>
+      <div class="image-wrapper">
+        <img id="modal-image" src="" alt="Vista previa">
+      </div>
+      <button id="next-photo-btn" class="nav-btn next-btn">❯</button>
+    </div>
+
+    <div class="modal-footer">
+      <button id="toggle-select-btn" class="action-btn">
+        <span class="btn-icon">✓</span>
+        <span id="select-btn-text">Seleccionar fotografía</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
