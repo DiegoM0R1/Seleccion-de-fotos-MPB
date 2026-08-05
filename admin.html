@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel del Fotógrafo - Photo Selection</title>
+  <title>Panel del Fotógrafo - Selección de Fotos</title>
   <link rel="stylesheet" href="admin-styles.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -13,43 +13,29 @@
   <header class="admin-header">
     <div class="header-left">
       <a href="index.html" class="back-link">‹ Vista Revisor</a>
-      <h1 id="admin-event-title">Selecciona o crea un evento</h1>
-      <span id="realtime-badge" class="status-badge connecting">Sin conexión</span>
+      
+      <!-- DESPLEGABLE DE EVENTOS -->
+      <div class="event-select-wrapper">
+        <select id="admin-event-select" class="event-select-dropdown">
+          <option value="">Cargando eventos...</option>
+        </select>
+      </div>
+
+      <span id="realtime-badge" class="status-badge connecting">Conectando...</span>
     </div>
+
     <div class="header-actions">
+      <button id="copy-link-btn" class="btn btn-outline" title="Copiar enlace directo para el Revisor/Alcalde">
+        🔗 Copiar Link Alcalde
+      </button>
       <button id="open-create-modal-btn" class="btn btn-primary">+ Nuevo Evento</button>
-      <button id="download-selected-btn" class="btn btn-primary">
+      <button id="download-selected-btn" class="btn btn-secondary">
         📥 Descargar Seleccionadas (<span id="btn-selected-count">0</span>)
       </button>
-      <button id="finalize-event-btn" class="btn btn-danger">
-        🗑️ Finalizar Evento
-      </button>
+      <button id="finalize-event-btn" class="btn btn-danger">🗑️ Finalizar Evento</button>
     </div>
   </header>
-<!-- Cabeza / Toolbar del Administrador -->
-<div class="admin-header">
-  <div class="header-left">
-    <a href="index.html" class="btn-link">‹ Vista Revisor</a>
-    
-    <!-- DESPLEGABLE DE EVENTOS -->
-    <div class="event-select-wrapper">
-      <select id="admin-event-select" class="event-select-dropdown">
-        <option value="">Cargando eventos...</option>
-      </select>
-    </div>
 
-    <span id="connection-badge" class="badge badge-online">Conectado</span>
-  </div>
-
-  <div class="header-actions">
-    <button id="copy-link-btn" class="btn btn-outline" title="Copiar enlace para el Alcalde">
-      🔗 Copiar Link Alcalde
-    </button>
-    <button id="btn-new-event" class="btn btn-primary">+ Nuevo Evento</button>
-    <button id="btn-download-selected" class="btn btn-secondary">📥 Descargar Seleccionadas (0)</button>
-    <button id="btn-finalize-event" class="btn btn-danger">🗑️ Finalizar Evento</button>
-  </div>
-</div>
   <!-- Tarjetas de Métricas -->
   <section class="metrics-container">
     <div class="metric-card">
@@ -110,19 +96,19 @@
   </div>
 
   <!-- Modal Confirmación para Finalizar Evento -->
-  <div id="finalize-modal" class="modal hidden">
-    <div class="modal-dialog">
+  <div id="finalize-modal" class="modal-overlay hidden">
+    <div class="modal-card">
       <h2>¿Finalizar Evento?</h2>
-      <p>Esta acción cambiará el estado del evento. Puedes optar por eliminar los registros o archivarlos.</p>
+      <p style="margin: 12px 0; color: #64748b;">Esta acción cambiará el estado del evento. Puedes optar por archivar el registro o eliminarlo por completo.</p>
       
-      <div class="modal-actions">
-        <button id="confirm-archive-btn" class="btn btn-secondary">Solo Archivar Evento</button>
-        <button id="confirm-delete-btn" class="btn btn-danger">Eliminar Todo (Base de datos y Fotos)</button>
-        <button id="cancel-finalize-btn" class="btn btn-ghost">Cancelar</button>
+      <div class="modal-actions" style="flex-direction: column; gap: 8px;">
+        <button id="confirm-archive-btn" class="btn btn-secondary" style="width: 100%;">Solo Archivar Evento</button>
+        <button id="confirm-delete-btn" class="btn btn-danger" style="width: 100%;">Eliminar Todo (Base de Datos y Fotos)</button>
+        <button id="cancel-finalize-btn" class="btn btn-ghost" style="width: 100%;">Cancelar</button>
       </div>
     </div>
-    
   </div>
-<script src="admin.js"></script>
+
+  <script src="admin.js"></script>
 </body>
 </html>

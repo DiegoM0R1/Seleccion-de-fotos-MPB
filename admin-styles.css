@@ -205,50 +205,93 @@ body.admin-body {
   border-radius: 6px;
   box-sizing: border-box;
 }
+/* Header del Admin */
 .admin-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  padding: 16px 24px;
+  padding: 14px 20px;
   background-color: #ffffff;
   border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .event-select-dropdown {
   background-color: #f8fafc;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 1rem;
+  padding: 8px 12px;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #0f172a;
   outline: none;
   cursor: pointer;
-  min-width: 260px;
+  min-width: 220px;
 }
 
-.badge-online {
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-badge.connected {
   background-color: #dcfce7;
   color: #15803d;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
 }
 
-.badge-offline {
+.status-badge.connecting {
   background-color: #fef3c7;
   color: #b45309;
-  padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 0.85rem;
+}
+
+.back-link {
+  color: #2563eb;
+  text-decoration: none;
   font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Botones en fotos para marcar publicadas */
+.admin-card-actions {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  z-index: 2;
+}
+
+.tag-btn {
+  background-color: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background-color 0.2s;
+}
+
+.tag-btn.is-published {
+  background-color: #16a34a;
 }
