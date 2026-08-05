@@ -352,3 +352,47 @@ function setupEventListeners() {
     });
   });
 }
+
+// Cargar lista de eventos en el panel de administración
+async function loadAdminEvents() {
+  const selector = document.getElementById("admin-event-selector");
+  if (!selector) return;
+
+  const { data: events, error } = await supabase
+    .from("eventos")
+    .select("id, nombre, estado, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error || !events || events.length === 0) {
+    selector.innerHTML = '<option value="">No hay eventos creados</option>';
+    return;
+  }
+
+  selector.innerHTML = events.map(e => `
+    <option value="${e.id}">
+      ${e.nombre} (${e.estado.toUpperCase()})
+    </option>
+  `).join("");
+
+  // Cargar las fotos del evento seleccionado actualmente
+  currentAdminEventId = selector.value;
+  if (typeof fetchAdminPhotos === "function") {
+    fetchAdminPhotos(currentAdminEventId);
+  }
+}
+
+// Evento al cambiar de selección en el admin
+document.getElementById("admin-event-selector")?.addEventListener("change", (e) => {
+  currentAdminEventId = e.target.value;
+  if (typeof fetchAdminPhotos === "function") {
+    fetchAdminPhotos(currentAdminEventId);
+  }
+});
+
+// Botón para copiar el link directo al Alcalde
+document.getElementById("copy-link-btn")?.addEventListener("click", () => {
+  if (!currentAdminEventId) return;
+  const publicUrl = `${window.location.origin}${window.location.pathname.replace("admin.html", "index.html")}?evento=${currentAdminEventId}`;
+  navigator.clipboard.writeText(publicUrl);
+  alert("¡Enlace del evento copiado al portapapeles!");
+});
