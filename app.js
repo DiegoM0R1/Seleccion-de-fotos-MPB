@@ -25,18 +25,33 @@ const nextPhotoBtn = document.getElementById("next-photo-btn");
 
 // INICIALIZACIÓN
 document.addEventListener("DOMContentLoaded", async () => {
+  setupEventListeners();
+
   const urlParams = new URLSearchParams(window.location.search);
   eventId = urlParams.get("evento");
 
+  // Si no hay parámetro en la URL, busca automáticamente el evento activo más reciente
   if (!eventId) {
-    eventTitle.textContent = "Error: Enlace de evento inválido";
-    return;
+    const { data: latestEvent, error } = await supabase
+      .from("eventos")
+      .select("id")
+      .eq("estado", "activo")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestEvent) {
+      eventId = latestEvent.id;
+    } else {
+      const titleEl = document.getElementById("event-title") || document.querySelector("h1");
+      if (titleEl) titleEl.textContent = "No hay ningún evento activo disponible.";
+      return;
+    }
   }
 
-  await fetchEventDetails();
+  await fetchEventData();
   await fetchPhotos();
-  setupEventListeners();
-  registerServiceWorker();
+  setupRealtimeSubscription();
 });
 
 // Cargar detalles del Evento
