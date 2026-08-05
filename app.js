@@ -12,10 +12,11 @@ var supabase = window.dbClient;
 let photosState = [];
 let currentPhotoIndex = 0;
 let eventId = null;
+let realtimeChannel = null;
 
 // ELEMENTOS DEL DOM
 const galleryGrid = document.getElementById("gallery-grid");
-const eventTitle = document.getElementById("event-title");
+const eventSelector = document.getElementById("event-selector");
 const selectionCounter = document.getElementById("selection-counter");
 
 // Modal Elements
@@ -33,49 +34,56 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupEventListeners();
   registerServiceWorker();
 
-  const urlParams = new URLSearchParams(window.location.search);
-  eventId = urlParams.get("evento");
-
-  // Si no hay parámetro en la URL, busca automáticamente el evento activo más reciente
-  if (!eventId) {
-    const { data: latestEvent } = await supabase
-      .from("eventos")
-      .select("id")
-      .eq("estado", "activo")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (latestEvent) {
-      eventId = latestEvent.id;
-    } else {
-      if (eventTitle) eventTitle.textContent = "No hay ningún evento activo disponible.";
-      return;
-    }
+  const eventsAvailable = await fetchActiveEvents();
+  if (eventsAvailable) {
+    await fetchPhotos();
+    setupRealtimeSubscription();
   }
-
-  await fetchEventDetails();
-  await fetchPhotos();
-  setupRealtimeSubscription();
 });
 
-// Cargar detalles del Evento
-async function fetchEventDetails() {
-  const { data, error } = await supabase
+// 1. Obtener todos los eventos activos y llenar el selector
+async function fetchActiveEvents() {
+  const { data: events, error } = await supabase
     .from("eventos")
-    .select("nombre")
-    .eq("id", eventId)
-    .single();
+    .select("id, nombre")
+    .eq("estado", "activo")
+    .order("created_at", { ascending: false });
 
-  if (error || !data) {
-    if (eventTitle) eventTitle.textContent = "Evento no encontrado";
-    return;
+  if (error || !events || events.length === 0) {
+    if (eventSelector) {
+      eventSelector.innerHTML = '<option value="">No hay eventos activos</option>';
+    }
+    return false;
   }
-  if (eventTitle) eventTitle.textContent = data.nombre;
+
+  // Poblar el menú desplegable
+  if (eventSelector) {
+    eventSelector.innerHTML = events.map(ev => 
+      `<option value="${ev.id}">${ev.nombre}</option>`
+    ).join("");
+  }
+
+  // Comprobar si hay un ID específico en la URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlEventId = urlParams.get("evento");
+
+  if (urlEventId && events.some(e => e.id === urlEventId)) {
+    eventId = urlEventId;
+  } else {
+    eventId = events[0].id; // Evento más reciente por defecto
+  }
+
+  if (eventSelector) {
+    eventSelector.value = eventId;
+  }
+
+  return true;
 }
 
-// Cargar lista de fotografías
+// 2. Cargar fotografías del evento activo
 async function fetchPhotos() {
+  if (!eventId) return;
+
   const { data, error } = await supabase
     .from("fotografias")
     .select("*")
@@ -92,7 +100,7 @@ async function fetchPhotos() {
   updateCounter();
 }
 
-// Renderizar la Cuadrícula
+// 3. Renderizar Galería
 function renderGallery() {
   if (!galleryGrid) return;
   galleryGrid.innerHTML = "";
@@ -115,14 +123,14 @@ function renderGallery() {
   });
 }
 
-// Actualizar Contador de Seleccionadas
+// 4. Actualizar Contador
 function updateCounter() {
   if (!selectionCounter) return;
   const selectedCount = photosState.filter(p => p.seleccionada).length;
   selectionCounter.textContent = `${selectedCount} de ${photosState.length} seleccionadas`;
 }
 
-// LÓGICA DEL MODAL / VISOR
+// LÓGICA DEL VISOR / MODAL
 function openModal(index) {
   currentPhotoIndex = index;
   updateModalContent();
@@ -150,20 +158,17 @@ function updateModalContent() {
   }
 }
 
-// Alternar Selección (Guardado Automático)
 async function togglePhotoSelection() {
   const photo = photosState[currentPhotoIndex];
   if (!photo) return;
 
   const newSelectionState = !photo.seleccionada;
-
-  // Actualización optimista en memoria y UI
   photo.seleccionada = newSelectionState;
+
   updateModalContent();
   renderGallery();
   updateCounter();
 
-  // Guardar en Supabase
   const { error } = await supabase
     .from("fotografias")
     .update({ seleccionada: newSelectionState })
@@ -171,7 +176,6 @@ async function togglePhotoSelection() {
 
   if (error) {
     console.error("Error al actualizar la selección:", error);
-    // Revertir cambio si falla la red
     photo.seleccionada = !newSelectionState;
     updateModalContent();
     renderGallery();
@@ -179,7 +183,6 @@ async function togglePhotoSelection() {
   }
 }
 
-// Navegación en el Visor
 function nextPhoto() {
   if (currentPhotoIndex < photosState.length - 1) {
     currentPhotoIndex++;
@@ -194,14 +197,29 @@ function prevPhoto() {
   }
 }
 
-// Event Listeners
+// LISTENERS Y CAMBIO DE EVENTO
 function setupEventListeners() {
   if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
   if (toggleSelectBtn) toggleSelectBtn.addEventListener("click", togglePhotoSelection);
   if (nextPhotoBtn) nextPhotoBtn.addEventListener("click", nextPhoto);
   if (prevPhotoBtn) prevPhotoBtn.addEventListener("click", prevPhoto);
 
-  // Soporte de Teclado
+  // Evento al cambiar de opción en el desplegable
+  if (eventSelector) {
+    eventSelector.addEventListener("change", async (e) => {
+      eventId = e.target.value;
+      if (!eventId) return;
+
+      // Actualizar la URL sin recargar la página
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.set("evento", eventId);
+      window.history.pushState({}, "", newUrl);
+
+      await fetchPhotos();
+      setupRealtimeSubscription();
+    });
+  }
+
   document.addEventListener("keydown", (e) => {
     if (!photoModal || photoModal.classList.contains("hidden")) return;
     if (e.key === "Escape") closeModal();
@@ -214,7 +232,12 @@ function setupEventListeners() {
 // SINCRONIZACIÓN EN TIEMPO REAL
 function setupRealtimeSubscription() {
   if (!eventId) return;
-  supabase
+
+  if (realtimeChannel) {
+    supabase.removeChannel(realtimeChannel);
+  }
+
+  realtimeChannel = supabase
     .channel(`public-event-${eventId}`)
     .on(
       "postgres_changes",
@@ -239,7 +262,6 @@ function setupRealtimeSubscription() {
     .subscribe();
 }
 
-// REGISTRO DEL SERVICE WORKER
 function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js")

@@ -20,13 +20,17 @@
 </head>
 <body>
 
-  <!-- Cabecera Principal -->
-  <header class="app-header">
-    <div class="header-info">
-      <h1 id="event-title">Cargando evento...</h1>
-      <p id="selection-counter">0 de 0 seleccionadas</p>
+  <!-- Cabecera Principal con Selector de Eventos -->
+<header class="app-header">
+  <div class="header-info">
+    <div class="select-container">
+      <select id="event-selector" class="event-dropdown">
+        <option value="">Cargando eventos...</option>
+      </select>
     </div>
-  </header>
+    <p id="selection-counter">0 de 0 seleccionadas</p>
+  </div>
+</header>
 
   <!-- Contenedor Principal: Cuadrícula de Fotos -->
   <main class="gallery-container">

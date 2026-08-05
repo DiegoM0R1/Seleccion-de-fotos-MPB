@@ -305,3 +305,22 @@ body {
 .hidden {
   display: none !important;
 }
+.event-dropdown {
+  background-color: transparent;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  width: 100%;
+  max-width: 400px;
+  cursor: pointer;
+  outline: none;
+}
+
+.event-dropdown option {
+  background-color: #1e293b;
+  color: #ffffff;
+  padding: 8px;
+}
