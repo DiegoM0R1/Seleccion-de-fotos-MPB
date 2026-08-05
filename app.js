@@ -81,8 +81,16 @@ async function fetchActiveEvents() {
 }
 
 // 2. Cargar fotografías del evento activo
+function showSkeletons(count = 12) {
+  if (!galleryGrid) return;
+  galleryGrid.innerHTML = Array.from({ length: count })
+    .map(() => `<div class="photo-card skeleton"></div>`)
+    .join("");
+}
+
 async function fetchPhotos() {
   if (!eventId) return;
+  showSkeletons(); // ← agregar esta línea
 
   const { data, error } = await supabase
     .from("fotografias")
@@ -90,32 +98,35 @@ async function fetchPhotos() {
     .eq("evento_id", eventId)
     .order("numero", { ascending: true });
 
-  if (error) {
-    console.error("Error al cargar fotos:", error);
-    return;
-  }
-
+  if (error) { console.error("Error al cargar fotos:", error); return; }
   photosState = data || [];
   renderGallery();
   updateCounter();
 }
 
-// 3. Renderizar Galería
 function renderGallery() {
   if (!galleryGrid) return;
   galleryGrid.innerHTML = "";
+
+  if (photosState.length === 0) {
+    galleryGrid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:#64748b;">
+        <div style="font-size:2rem;margin-bottom:8px;">📷</div>
+        <p style="font-weight:500;">No hay fotografías en este evento</p>
+      </div>`;
+    return;
+  }
 
   photosState.forEach((photo, index) => {
     const card = document.createElement("div");
     card.className = `photo-card ${photo.seleccionada ? "selected" : ""}`;
     card.setAttribute("data-index", index);
-
     const formattedNum = String(photo.numero).padStart(3, "0");
 
     card.innerHTML = `
       <img src="${photo.thumbnail_url}" alt="Foto ${formattedNum}" loading="lazy">
       <div class="check-indicator">${photo.seleccionada ? "✓" : ""}</div>
-      <div class="photo-badge">Foto ${formattedNum}</div>
+      <div class="photo-badge">${formattedNum}</div>
     `;
 
     card.addEventListener("click", () => openModal(index));
@@ -199,6 +210,7 @@ function prevPhoto() {
 
 // LISTENERS Y CAMBIO DE EVENTO
 function setupEventListeners() {
+  
   if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
   if (toggleSelectBtn) toggleSelectBtn.addEventListener("click", togglePhotoSelection);
   if (nextPhotoBtn) nextPhotoBtn.addEventListener("click", nextPhoto);
@@ -218,6 +230,16 @@ function setupEventListeners() {
       await fetchPhotos();
       setupRealtimeSubscription();
     });
+    let touchStartX = 0;
+const modalBody = document.querySelector(".modal-body");
+
+if (modalBody) {
+  modalBody.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+  modalBody.addEventListener("touchend", e => {
+    const diff = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) { diff > 0 ? nextPhoto() : prevPhoto(); }
+  });
+    
   }
 
   document.addEventListener("keydown", (e) => {
@@ -267,4 +289,5 @@ function registerServiceWorker() {
     navigator.serviceWorker.register("./sw.js")
       .catch(err => console.error("Error al registrar Service Worker:", err));
   }
+}
 }
