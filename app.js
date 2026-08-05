@@ -50,6 +50,7 @@ async function fetchActiveEvents() {
     .order("created_at", { ascending: false });
 
   if (error || !events || events.length === 0) {
+    if (error) console.error("Error Supabase (eventos):", error);
     if (eventSelector) {
       eventSelector.innerHTML = '<option value="">No hay eventos activos</option>';
     }
@@ -90,7 +91,7 @@ function showSkeletons(count = 12) {
 
 async function fetchPhotos() {
   if (!eventId) return;
-  showSkeletons(); // ← agregar esta línea
+  showSkeletons();
 
   const { data, error } = await supabase
     .from("fotografias")
@@ -210,19 +211,16 @@ function prevPhoto() {
 
 // LISTENERS Y CAMBIO DE EVENTO
 function setupEventListeners() {
-  
   if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
   if (toggleSelectBtn) toggleSelectBtn.addEventListener("click", togglePhotoSelection);
   if (nextPhotoBtn) nextPhotoBtn.addEventListener("click", nextPhoto);
   if (prevPhotoBtn) prevPhotoBtn.addEventListener("click", prevPhoto);
 
-  // Evento al cambiar de opción en el desplegable
   if (eventSelector) {
     eventSelector.addEventListener("change", async (e) => {
       eventId = e.target.value;
       if (!eventId) return;
 
-      // Actualizar la URL sin recargar la página
       const newUrl = new URL(window.location);
       newUrl.searchParams.set("evento", eventId);
       window.history.pushState({}, "", newUrl);
@@ -230,16 +228,17 @@ function setupEventListeners() {
       await fetchPhotos();
       setupRealtimeSubscription();
     });
-    let touchStartX = 0;
-const modalBody = document.querySelector(".modal-body");
+  }
 
-if (modalBody) {
-  modalBody.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX; }, { passive: true });
-  modalBody.addEventListener("touchend", e => {
-    const diff = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(diff) > 50) { diff > 0 ? nextPhoto() : prevPhoto(); }
-  });
-    
+  let touchStartX = 0;
+  const modalBody = document.querySelector(".modal-body");
+
+  if (modalBody) {
+    modalBody.addEventListener("touchstart", e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    modalBody.addEventListener("touchend", e => {
+      const diff = touchStartX - e.changedTouches[0].clientX;
+      if (Math.abs(diff) > 50) { diff > 0 ? nextPhoto() : prevPhoto(); }
+    });
   }
 
   document.addEventListener("keydown", (e) => {
@@ -289,5 +288,4 @@ function registerServiceWorker() {
     navigator.serviceWorker.register("./sw.js")
       .catch(err => console.error("Error al registrar Service Worker:", err));
   }
-}
 }
