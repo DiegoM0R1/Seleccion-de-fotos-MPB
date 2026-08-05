@@ -59,7 +59,122 @@ document.addEventListener("DOMContentLoaded", async () => {
   await fetchPhotos();
   setupRealtimeSubscription();
 });
+// 1. CARGAR TODOS LOS EVENTOS EN EL SELECTOR
+async function loadAllAdminEvents() {
+  const eventSelect = document.getElementById("admin-event-select");
+  const connectionBadge = document.getElementById("connection-badge");
 
+  const { data: events, error } = await supabase
+    .from("eventos")
+    .select("id, nombre, estado, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error al cargar eventos:", error);
+    if (connectionBadge) {
+      connectionBadge.textContent = "Sin conexión";
+      connectionBadge.className = "badge badge-offline";
+    }
+    if (eventSelect) eventSelect.innerHTML = '<option value="">Error de conexión</option>';
+    return;
+  }
+
+  if (connectionBadge) {
+    connectionBadge.textContent = "Conectado";
+    connectionBadge.className = "badge badge-online";
+  }
+
+  if (!events || events.length === 0) {
+    if (eventSelect) eventSelect.innerHTML = '<option value="">Sin eventos creados</option>';
+    currentEventId = null;
+    updateAdminCounters();
+    return;
+  }
+
+  // Llenar el menú desplegable con todos los eventos
+  if (eventSelect) {
+    eventSelect.innerHTML = events.map(ev => {
+      const estadoTag = ev.estado === "activo" ? "🟢" : "🔴";
+      return `<option value="${ev.id}">${estadoTag} ${ev.nombre}</option>`;
+    }).join("");
+  }
+
+  // Seleccionar por defecto el evento más reciente
+  currentEventId = events[0].id;
+  if (eventSelect) eventSelect.value = currentEventId;
+
+  // Cargar fotos del evento seleccionado
+  await loadEventPhotos(currentEventId);
+}
+
+// 2. CARGAR FOTOGRAFÍAS DEL EVENTO SELECCIONADO
+async function loadEventPhotos(eventId) {
+  if (!eventId) return;
+
+  const { data: photos, error } = await supabase
+    .from("fotografias")
+    .select("*")
+    .eq("evento_id", eventId)
+    .order("numero", { ascending: true });
+
+  if (error) {
+    console.error("Error al cargar fotos del evento:", error);
+    return;
+  }
+
+  adminPhotosState = photos || [];
+  renderAdminGallery();
+  updateAdminCounters();
+}
+
+// 3. ACTUALIZAR CONTADORES Y MÉTRICAS
+function updateAdminCounters() {
+  const total = adminPhotosState.length;
+  const selected = adminPhotosState.filter(p => p.seleccionada).length;
+  const published = adminPhotosState.filter(p => p.publicada).length;
+
+  const totalEl = document.getElementById("total-photos-count");
+  const selectedEl = document.getElementById("selected-photos-count");
+  const publishedEl = document.getElementById("published-photos-count");
+  const downloadBtn = document.getElementById("btn-download-selected");
+
+  if (totalEl) totalEl.textContent = total;
+  if (selectedEl) selectedEl.textContent = selected;
+  if (publishedEl) publishedEl.textContent = published;
+  if (downloadBtn) downloadBtn.textContent = `📥 Descargar Seleccionadas ( ${selected} )`;
+}
+
+// 4. EVENT LISTENERS
+function setupAdminListeners() {
+  const eventSelect = document.getElementById("admin-event-select");
+  const copyBtn = document.getElementById("copy-link-btn");
+
+  // Al cambiar de evento en el desplegable
+  if (eventSelect) {
+    eventSelect.addEventListener("change", async (e) => {
+      currentEventId = e.target.value;
+      if (currentEventId) {
+        await loadEventPhotos(currentEventId);
+      }
+    });
+  }
+
+  // Botón para copiar el link directo para el Alcalde
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      if (!currentEventId) {
+        alert("Selecciona o crea un evento primero.");
+        return;
+      }
+      const baseUrl = window.location.origin + window.location.pathname.replace("/admin", "").replace("admin.html", "");
+      const publicUrl = `${baseUrl}/index.html?evento=${currentEventId}`;
+      
+      navigator.clipboard.writeText(publicUrl).then(() => {
+        alert("¡Enlace del evento copiado al portapapeles!\n\n" + publicUrl);
+      });
+    });
+  }
+}
 // 1. Cargar datos del evento y fotos
 async function fetchEventData() {
   const { data } = await supabase.from("eventos").select("nombre").eq("id", eventId).single();
@@ -353,46 +468,3 @@ function setupEventListeners() {
   });
 }
 
-// Cargar lista de eventos en el panel de administración
-async function loadAdminEvents() {
-  const selector = document.getElementById("admin-event-selector");
-  if (!selector) return;
-
-  const { data: events, error } = await supabase
-    .from("eventos")
-    .select("id, nombre, estado, created_at")
-    .order("created_at", { ascending: false });
-
-  if (error || !events || events.length === 0) {
-    selector.innerHTML = '<option value="">No hay eventos creados</option>';
-    return;
-  }
-
-  selector.innerHTML = events.map(e => `
-    <option value="${e.id}">
-      ${e.nombre} (${e.estado.toUpperCase()})
-    </option>
-  `).join("");
-
-  // Cargar las fotos del evento seleccionado actualmente
-  currentAdminEventId = selector.value;
-  if (typeof fetchAdminPhotos === "function") {
-    fetchAdminPhotos(currentAdminEventId);
-  }
-}
-
-// Evento al cambiar de selección en el admin
-document.getElementById("admin-event-selector")?.addEventListener("change", (e) => {
-  currentAdminEventId = e.target.value;
-  if (typeof fetchAdminPhotos === "function") {
-    fetchAdminPhotos(currentAdminEventId);
-  }
-});
-
-// Botón para copiar el link directo al Alcalde
-document.getElementById("copy-link-btn")?.addEventListener("click", () => {
-  if (!currentAdminEventId) return;
-  const publicUrl = `${window.location.origin}${window.location.pathname.replace("admin.html", "index.html")}?evento=${currentAdminEventId}`;
-  navigator.clipboard.writeText(publicUrl);
-  alert("¡Enlace del evento copiado al portapapeles!");
-});
