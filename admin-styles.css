@@ -1,8 +1,19 @@
-/* Estilos específicos del Panel de Administración */
-.admin-body {
-  background-color: #f1f5f9;
+:root {
+  --primary-color: #2563eb;
+  --primary-hover: #1d4ed8;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --bg-color: #f8fafc;
 }
 
+body.admin-body {
+  background-color: var(--bg-color);
+  font-family: system-ui, -apple-system, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* Header de Administración */
 .admin-header {
   display: flex;
   justify-content: space-between;
@@ -20,6 +31,14 @@
   gap: 12px;
 }
 
+/* Alineación y visibilidad de botones superiores */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .back-link {
   color: var(--primary-color);
   text-decoration: none;
@@ -27,7 +46,7 @@
   font-weight: 500;
 }
 
-/* Badge Realtime */
+/* Badges */
 .status-badge {
   font-size: 0.75rem;
   padding: 4px 8px;
@@ -45,7 +64,7 @@
   color: #a16207;
 }
 
-/* Métricas */
+/* Tarjetas de Métricas */
 .metrics-container {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -77,7 +96,7 @@
   color: var(--text-muted);
 }
 
-/* Filtros */
+/* Barra de Filtros */
 .filter-bar {
   display: flex;
   gap: 8px;
@@ -103,7 +122,7 @@
   border-color: var(--primary-color);
 }
 
-/* Botones */
+/* Estilos de Botones */
 .btn {
   padding: 8px 16px;
   border-radius: 6px;
@@ -111,59 +130,34 @@
   font-weight: 600;
   cursor: pointer;
   font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .btn-primary { background-color: var(--primary-color); color: #fff; }
+.btn-primary:hover { background-color: var(--primary-hover); }
 .btn-danger { background-color: #ef4444; color: #fff; }
 .btn-secondary { background-color: #64748b; color: #fff; }
 .btn-ghost { background-color: transparent; color: var(--text-main); }
 
-/* Acciones en la tarjeta de la foto */
-.admin-card-actions {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  z-index: 2;
-  display: flex;
-  gap: 4px;
+/* Galería */
+.gallery-container {
+  padding: 16px 24px;
 }
 
-.tag-btn {
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 0.7rem;
-  padding: 3px 6px;
-  cursor: pointer;
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
 }
 
-.tag-btn.is-published {
-  background: #16a34a;
-}
-
-/* Modal confirmación */
-.modal-dialog {
-  background: #fff;
-  padding: 24px;
-  border-radius: 12px;
-  max-width: 480px;
-  width: 90%;
-  margin: auto;
-}
-
-.modal-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 20px;
-}
-/* Ocultar elementos */
+/* Estilos de Modales y Superposición */
 .hidden {
   display: none !important;
 }
 
-/* Modal superpuesto */
 .modal-overlay, .modal {
   position: fixed;
   top: 0;
@@ -184,4 +178,30 @@
   width: 90%;
   max-width: 500px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  box-sizing: border-box;
 }
