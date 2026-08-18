@@ -119,20 +119,45 @@ function renderGallery() {
   }
 
   photosState.forEach((photo, index) => {
-    const card = document.createElement("div");
-    card.className = `photo-card ${photo.seleccionada ? "selected" : ""}`;
-    card.setAttribute("data-index", index);
-    const formattedNum = String(photo.numero).padStart(3, "0");
+  const card = document.createElement("div");
+  // Arranca siempre con skeleton hasta que la imagen cargue
+  card.className = `photo-card skeleton ${photo.seleccionada ? "selected" : ""}`;
+  card.setAttribute("data-index", index);
+  const formattedNum = String(photo.numero).padStart(3, "0");
 
-    card.innerHTML = `
-      <img src="${photo.thumbnail_url}" alt="Foto ${formattedNum}" loading="lazy">
-      <div class="check-indicator">${photo.seleccionada ? "✓" : ""}</div>
-      <div class="photo-badge">${formattedNum}</div>
-    `;
+  const img = document.createElement("img");
+  img.alt = `Foto ${formattedNum}`;
+  img.loading = "lazy";
 
-    card.addEventListener("click", () => openModal(index));
-    galleryGrid.appendChild(card);
+  const checkEl = document.createElement("div");
+  checkEl.className = "check-indicator";
+  checkEl.textContent = photo.seleccionada ? "✓" : "";
+
+  const badgeEl = document.createElement("div");
+  badgeEl.className = "photo-badge";
+  badgeEl.textContent = formattedNum;
+
+  // Quita el skeleton cuando la imagen termina de cargar
+  img.addEventListener("load", () => {
+    card.classList.remove("skeleton");
   });
+
+  // Si falla la carga, quita el skeleton igual
+  img.addEventListener("error", () => {
+    card.classList.remove("skeleton");
+    img.style.opacity = "0.2";
+  });
+
+  card.appendChild(img);
+  card.appendChild(checkEl);
+  card.appendChild(badgeEl);
+
+  // Asignar src DESPUÉS de agregar listeners
+  img.src = photo.thumbnail_url;
+
+  card.addEventListener("click", () => openModal(index));
+  galleryGrid.appendChild(card);
+});
 }
 
 // 4. Actualizar Contador
