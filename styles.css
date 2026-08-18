@@ -156,15 +156,25 @@ body {
 }
 
 /* ── Skeleton loader ── */
-.photo-card.skeleton .check-indicator,
-.photo-card.skeleton .photo-badge{
+.photo-card.skeleton {
   background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
   background-size: 200% 100%;
   animation: shimmer 1.4s infinite;
   cursor: default;
-  display: none;
-  visibility: hidden;
+}
 
+.photo-card.skeleton img {
+  opacity: 0;
+}
+
+.photo-card.skeleton .check-indicator,
+.photo-card.skeleton .photo-badge {
+  visibility: hidden;
+}
+
+@keyframes shimmer {
+  0%  { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 @keyframes shimmer {
