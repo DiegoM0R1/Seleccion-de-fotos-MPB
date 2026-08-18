@@ -183,7 +183,6 @@ function updateModalContent() {
   if (!photo) return;
   const formattedNum = String(photo.numero).padStart(3, "0");
 
-  if (modalImage) modalImage.src = photo.original_url || photo.thumbnail_url;
   if (modalPhotoNumber) modalPhotoNumber.textContent = `Foto ${formattedNum}`;
 
   if (photo.seleccionada) {
@@ -193,6 +192,36 @@ function updateModalContent() {
     if (toggleSelectBtn) toggleSelectBtn.classList.remove("is-selected");
     if (selectBtnText) selectBtnText.textContent = "Seleccionar fotografía";
   }
+
+  if (modalImage) {
+    // Oculta la imagen vieja inmediatamente y muestra el spinner
+    modalImage.style.opacity = "0";
+    showModalSpinner(true);
+
+    const newSrc = photo.original_url || photo.thumbnail_url;
+
+    // Si ya está cacheada, load dispara de inmediato
+    modalImage.onload = () => {
+      showModalSpinner(false);
+      modalImage.style.opacity = "1";
+    };
+    modalImage.onerror = () => {
+      showModalSpinner(false);
+      modalImage.style.opacity = "0.2";
+    };
+
+    modalImage.src = newSrc;
+  }
+}
+
+function showModalSpinner(visible) {
+  let spinner = document.getElementById("modal-spinner");
+  if (!spinner) {
+    spinner = document.createElement("div");
+    spinner.id = "modal-spinner";
+    document.querySelector(".image-wrapper").appendChild(spinner);
+  }
+  spinner.style.display = visible ? "flex" : "none";
 }
 
 async function togglePhotoSelection() {

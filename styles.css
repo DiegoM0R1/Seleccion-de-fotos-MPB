@@ -350,3 +350,34 @@ body {
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
 .hidden { display: none !important; }
+/* ── Spinner del modal ── */
+#modal-spinner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+#modal-spinner::after {
+  content: "";
+  width: 36px;
+  height: 36px;
+  border: 3px solid rgba(255, 255, 255, 0.15);
+  border-top-color: rgba(255, 255, 255, 0.85);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.image-wrapper {
+  position: relative; /* necesario para que el spinner se posicione dentro */
+}
+
+#modal-image {
+  transition: opacity 0.2s ease;
+}
