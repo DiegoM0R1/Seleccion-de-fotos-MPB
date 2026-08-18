@@ -268,10 +268,28 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 10px;                /* espacio entre botones */
   padding: 0 20px;
   background: rgba(0,0,0,0.75);
   backdrop-filter: blur(8px);
   border-top: 0.5px solid rgba(255,255,255,0.1);
+}
+
+/* El botón de seleccionar ocupa el espacio disponible */
+#toggle-select-btn {
+  flex: 1;
+  max-width: 260px;
+}
+
+/* El botón de descarga es cuadrado/compacto */
+.download-btn {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  max-width: 46px;
+  font-size: 1.1rem;
+  border-radius: 50%;
+  padding: 0;
 }
 
 .action-btn {

@@ -28,6 +28,7 @@ const selectBtnText = document.getElementById("select-btn-text");
 const closeModalBtn = document.getElementById("close-modal-btn");
 const prevPhotoBtn = document.getElementById("prev-photo-btn");
 const nextPhotoBtn = document.getElementById("next-photo-btn");
+const downloadBtn = document.getElementById("download-btn");
 
 // INICIALIZACIÓN
 document.addEventListener("DOMContentLoaded", async () => {
@@ -262,13 +263,39 @@ function prevPhoto() {
     updateModalContent();
   }
 }
+async function downloadCurrentPhoto() {
+  const photo = photosState[currentPhotoIndex];
+  if (!photo) return;
 
+  const url = photo.original_url || photo.thumbnail_url;
+  const formattedNum = String(photo.numero).padStart(3, "0");
+  const filename = `foto-${formattedNum}.jpg`;
+
+  try {
+    // Descarga real sin abrir nueva pestaña
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    a.click();
+
+    URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error("Error al descargar:", err);
+    // Fallback: abre la imagen en nueva pestaña
+    window.open(url, "_blank");
+  }
+}
 // LISTENERS Y CAMBIO DE EVENTO
 function setupEventListeners() {
   if (closeModalBtn) closeModalBtn.addEventListener("click", closeModal);
   if (toggleSelectBtn) toggleSelectBtn.addEventListener("click", togglePhotoSelection);
   if (nextPhotoBtn) nextPhotoBtn.addEventListener("click", nextPhoto);
   if (prevPhotoBtn) prevPhotoBtn.addEventListener("click", prevPhoto);
+  if (downloadBtn) downloadBtn.addEventListener("click", downloadCurrentPhoto);
 
   if (eventSelector) {
     eventSelector.addEventListener("change", async (e) => {
